@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Button } from "@/src/components/ui/button";
 import { Plus, MessageSquare } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { SidePanel, SidePanelContent } from "@/src/components/ui/side-panel";
 import { ScrollArea } from "@/src/components/ui/scroll-area";
+import { useConversations } from "../hooks/useConversations";
 
 type Conversation = {
   id: string;
@@ -32,50 +33,22 @@ export function ConversationListSidebar({
   onNewConversation,
   refreshKey,
 }: ConversationListSidebarProps) {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data,
+    isLoading,
+    error: queryError,
+    refetch,
+  } = useConversations(projectId, userId);
 
+  // Refetch when refreshKey changes
   useEffect(() => {
-    if (!projectId) return;
+    if (refreshKey) {
+      void refetch();
+    }
+  }, [refreshKey, refetch]);
 
-    const fetchConversations = async () => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const params = new URLSearchParams({ projectId });
-        if (userId) {
-          params.append("userId", userId);
-        }
-
-        // Fetch via Next.js API route (proxies to worker)
-        const response = await fetch(
-          `/api/assistant/conversations?${params.toString()}`,
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch conversations");
-        }
-
-        const data = await response.json();
-        setConversations(data.conversations || []);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load conversations",
-        );
-        console.error("Error fetching conversations:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchConversations();
-
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchConversations, 30000);
-    return () => clearInterval(interval);
-  }, [projectId, userId, refreshKey]);
+  const conversations = data?.conversations || [];
+  const error = queryError?.message || null;
 
   return (
     <SidePanel

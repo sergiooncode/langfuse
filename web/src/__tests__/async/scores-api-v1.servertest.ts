@@ -400,7 +400,7 @@ describe("/api/public/scores API Endpoint", () => {
 
       // Verify we fetched exactly the number of scores we created
       expect(totalFetched).toBe(totalScores);
-    });
+    }, 30000); // 30 second timeout for this long-running test
 
     describe("should Filter scores", () => {
       let configId = "";

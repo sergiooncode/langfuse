@@ -2,6 +2,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import Page from "@/src/components/layouts/page";
+import { useIsMobile } from "@/src/hooks/use-mobile";
 import { ConversationListSidebar } from "@/src/features/assistant/components/ConversationListSidebar";
 import { ChatView } from "@/src/features/assistant/components/ChatView";
 
@@ -10,6 +11,7 @@ export default function AssistantPage() {
   const projectId = router.query.projectId as string | undefined;
   const { data: session } = useSession();
   const userId = session?.user?.id;
+  const isMobile = useIsMobile();
   const [selectedConversationId, setSelectedConversationId] = useState<
     string | undefined
   >();
@@ -74,7 +76,7 @@ export default function AssistantPage() {
       scrollable={false}
       withPadding={false}
     >
-      <div className="flex h-full w-full">
+      <div className="flex h-full w-full flex-col md:flex-row">
         <ConversationListSidebar
           projectId={projectId}
           userId={userId}
@@ -84,15 +86,16 @@ export default function AssistantPage() {
           refreshKey={refreshKey}
         />
         {selectedConversationId ? (
-          <div className="flex h-full flex-1">
+          <div className="flex h-full min-h-0 min-w-0 flex-1">
             <ChatView conversationId={selectedConversationId} />
           </div>
         ) : (
-          <div className="flex flex-1 items-center justify-center">
+          <div className="flex min-h-0 flex-1 items-center justify-center p-4">
             <div className="text-center">
               <p className="text-sm text-muted-foreground">
-                Select a conversation from the sidebar or create a new one to
-                get started.
+                {isMobile
+                  ? "Open the sidebar to select or create a conversation"
+                  : "Select a conversation from the sidebar or create a new one to get started."}
               </p>
             </div>
           </div>

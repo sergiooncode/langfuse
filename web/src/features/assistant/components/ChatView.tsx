@@ -4,8 +4,11 @@ import { useEffect, useState, useRef } from "react";
 import { Button } from "@/src/components/ui/button";
 import { Textarea } from "@/src/components/ui/textarea";
 import { ScrollArea } from "@/src/components/ui/scroll-area";
-import { Loader2, Send } from "lucide-react";
+import { Loader2, Send, User, Bot } from "lucide-react";
 import { cn } from "@/src/utils/tailwind";
+import { formatDistanceToNow } from "date-fns";
+import { useConversation } from "../hooks/useConversation";
+import { useAddMessage } from "../hooks/useConversationMutations";
 
 type Message = {
   id: string;
@@ -19,124 +22,66 @@ type ChatViewProps = {
 };
 
 export function ChatView({ conversationId }: ChatViewProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSending, setIsSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Fetch conversation messages
-  useEffect(() => {
-    if (!conversationId) return;
+  // Fetch conversation using React Query hook
+  const {
+    data: conversationData,
+    isLoading,
+    error: queryError,
+  } = useConversation(conversationId);
 
-    const fetchMessages = async () => {
-      setIsLoading(true);
-      setError(null);
+  const addMessageMutation = useAddMessage();
 
-      try {
-        const response = await fetch(
-          `/api/assistant/conversations/${conversationId}`,
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch conversation");
-        }
-
-        const data = await response.json();
-        setMessages(data.messages || []);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load messages",
-        );
-        console.error("Error fetching messages:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchMessages();
-  }, [conversationId]);
+  const messages = conversationData?.messages || [];
+  const error = queryError?.message || null;
+  const isSending = addMessageMutation.isPending;
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Auto-focus input when conversation loads or changes
+  useEffect(() => {
+    if (!isLoading && conversationData) {
+      // Small delay to ensure input is rendered
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [conversationId, isLoading, conversationData]);
+
   const handleSend = async () => {
-    if (!inputValue.trim() || isSending) return;
+    if (!inputValue.trim() || isSending || !conversationId) return;
 
-    const userMessage: Message = {
-      id: `temp-${Date.now()}`,
-      role: "user",
-      content: inputValue.trim(),
-      timestamp: new Date().toISOString(),
-    };
-
-    // Optimistically add user message
-    setMessages((prev) => [...prev, userMessage]);
+    const content = inputValue.trim();
     setInputValue("");
-    setIsSending(true);
 
     try {
-      // Send message to API
-      const response = await fetch(
-        `/api/assistant/conversations/${conversationId}/messages`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            content: userMessage.content,
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => ({ error: "Unknown error" }));
-        throw new Error(
-          errorData.error || `Failed to send message: ${response.status}`,
-        );
-      }
-
-      const data = await response.json();
-
-      // Replace temporary message with server response and add assistant message
-      setMessages((prev) => {
-        const updated = prev.map((msg) =>
-          msg.id === userMessage.id
-            ? {
-                id: data.userMessage.id,
-                role: "user" as const,
-                content: data.userMessage.content,
-                timestamp: data.userMessage.timestamp,
-              }
-            : msg,
-        );
-
-        // Add assistant message
-        if (data.assistantMessage) {
-          updated.push({
-            id: data.assistantMessage.id,
-            role: "assistant" as const,
-            content: data.assistantMessage.content,
-            timestamp: data.assistantMessage.timestamp,
-          });
-        }
-
-        return updated;
+      await addMessageMutation.mutateAsync({
+        conversationId,
+        content,
       });
+      // React Query will automatically refetch the conversation
+      // and update the messages via the useConversation hook
+
+      // Refocus input after sending message for better keyboard accessibility
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     } catch (err) {
-      // Remove optimistic message on error
-      setMessages((prev) => prev.filter((msg) => msg.id !== userMessage.id));
-      setError(err instanceof Error ? err.message : "Failed to send message");
+      // Error is handled by React Query and will be available via
+      // addMessageMutation.error if needed
       console.error("Error sending message:", err);
-    } finally {
-      setIsSending(false);
+      // Refocus input even on error so user can retry
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     }
   };
 
@@ -166,13 +111,22 @@ export function ChatView({ conversationId }: ChatViewProps) {
   }
 
   return (
-    <div className="flex h-full w-full flex-col">
+    <div className="flex h-full w-full flex-col overflow-hidden">
       {/* Messages area */}
-      <ScrollArea className="w-full flex-1" ref={scrollAreaRef}>
+      <ScrollArea className="min-h-0 w-full flex-1" ref={scrollAreaRef}>
         <div className="flex w-full justify-center">
-          <div className="flex max-w-3xl flex-col gap-4 p-4">
+          <div
+            className="flex max-w-3xl flex-col gap-4 p-4 pb-6"
+            role="log"
+            aria-label="Conversation messages"
+            aria-live="polite"
+            aria-atomic="false"
+          >
             {messages.length === 0 ? (
-              <div className="flex h-full w-full items-center justify-center">
+              <div
+                className="flex h-full w-full items-center justify-center"
+                role="status"
+              >
                 <p className="text-center text-sm text-muted-foreground">
                   No messages yet. Start the conversation!
                 </p>
@@ -182,39 +136,73 @@ export function ChatView({ conversationId }: ChatViewProps) {
                 <div
                   key={message.id}
                   className={cn(
-                    "flex w-full",
+                    "flex w-full gap-2",
                     message.role === "user" ? "justify-end" : "justify-start",
                   )}
+                  role="article"
+                  aria-label={`Message from ${message.role}`}
                 >
+                  {message.role === "assistant" && (
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
+                      <Bot className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  )}
                   <div
                     className={cn(
-                      "max-w-[80%] rounded-lg px-4 py-2",
+                      "flex max-w-[80%] flex-col rounded-lg px-4 py-2",
                       message.role === "user"
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted text-foreground",
                     )}
                   >
+                    <div className="mb-1 flex items-center gap-2">
+                      <span className="text-xs font-medium opacity-70">
+                        {message.role === "user" ? "You" : "Assistant"}
+                      </span>
+                      {message.role === "user" && (
+                        <User className="h-3 w-3 opacity-70" />
+                      )}
+                    </div>
                     <p className="whitespace-pre-wrap text-sm">
                       {message.content}
                     </p>
-                    <p
+                    <time
+                      dateTime={message.timestamp}
                       className={cn(
                         "mt-1 text-xs",
                         message.role === "user"
                           ? "text-primary-foreground/70"
                           : "text-muted-foreground",
                       )}
+                      title={new Date(message.timestamp).toLocaleString()}
                     >
-                      {new Date(message.timestamp).toLocaleTimeString()}
-                    </p>
+                      {formatDistanceToNow(new Date(message.timestamp), {
+                        addSuffix: true,
+                      })}
+                    </time>
                   </div>
+                  {message.role === "user" && (
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary">
+                      <User className="h-4 w-4 text-primary-foreground" />
+                    </div>
+                  )}
                 </div>
               ))
             )}
             {isSending && (
-              <div className="flex justify-start">
-                <div className="rounded-lg bg-muted px-4 py-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              <div
+                className="flex w-full justify-center"
+                role="status"
+                aria-live="polite"
+              >
+                <div className="flex items-center gap-2 rounded-lg bg-muted px-4 py-2">
+                  <Loader2
+                    className="h-4 w-4 animate-spin text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    Assistant is typing...
+                  </span>
                 </div>
               </div>
             )}
@@ -224,26 +212,36 @@ export function ChatView({ conversationId }: ChatViewProps) {
       </ScrollArea>
 
       {/* Input area */}
-      <div className="flex w-full justify-center border-t px-6 pb-6 pt-4">
+      <div
+        className="flex w-full shrink-0 justify-center border-t bg-background px-4 pb-4 pt-4 md:px-6 md:pb-6"
+        style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+      >
         <div className="flex w-full max-w-6xl gap-2">
           <Textarea
+            ref={inputRef}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
             className="min-h-[60px] w-full resize-none"
             disabled={isSending}
+            aria-label="Message input"
+            aria-describedby="input-help-text"
           />
+          <span id="input-help-text" className="sr-only">
+            Press Enter to send message, Shift+Enter for new line
+          </span>
           <Button
             onClick={handleSend}
             disabled={!inputValue.trim() || isSending}
             size="icon"
             className="h-[60px] w-[60px] shrink-0"
+            aria-label="Send message"
           >
             {isSending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
             ) : (
-              <Send className="h-4 w-4" />
+              <Send className="h-4 w-4" aria-hidden="true" />
             )}
           </Button>
         </div>

@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerAuthSession } from "@/src/server/auth";
+import { proxyToWorker } from "../utils";
 
 export default async function handler(
   req: NextApiRequest,
@@ -30,7 +31,7 @@ export default async function handler(
       }
 
       const url = `${workerApiUrl}/api/conversations?${params.toString()}`;
-      const response = await fetch(url);
+      const response = await proxyToWorker(url);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -41,8 +42,17 @@ export default async function handler(
       return res.status(200).json(data);
     } catch (error) {
       console.error("Error proxying to worker API:", error);
-      return res.status(500).json({
-        error: "Failed to fetch conversations",
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch conversations";
+      return res.status(503).json({
+        error: errorMessage,
+        details:
+          error instanceof Error &&
+          error.message.includes("Worker API is not available")
+            ? "The worker server may not be running. Please start it with 'pnpm run dev:worker'"
+            : undefined,
       });
     }
   }
@@ -58,7 +68,7 @@ export default async function handler(
 
     try {
       const url = `${workerApiUrl}/api/conversations`;
-      const response = await fetch(url, {
+      const response = await proxyToWorker(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -75,8 +85,17 @@ export default async function handler(
       return res.status(201).json(data);
     } catch (error) {
       console.error("Error proxying to worker API:", error);
-      return res.status(500).json({
-        error: "Failed to create conversation",
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to create conversation";
+      return res.status(503).json({
+        error: errorMessage,
+        details:
+          error instanceof Error &&
+          error.message.includes("Worker API is not available")
+            ? "The worker server may not be running. Please start it with 'pnpm run dev:worker'"
+            : undefined,
       });
     }
   }
