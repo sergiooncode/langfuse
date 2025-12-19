@@ -36,6 +36,15 @@ export const getConversations = async (
         userId: true,
         startedAt: true,
         projectId: true,
+        messages: {
+          take: 1,
+          orderBy: {
+            timestamp: "asc",
+          },
+          select: {
+            content: true,
+          },
+        },
       },
     });
 
@@ -45,6 +54,7 @@ export const getConversations = async (
         userId: conv.userId,
         projectId: conv.projectId,
         startedAt: conv.startedAt.toISOString(),
+        firstMessagePreview: conv.messages[0]?.content || null,
       })),
     });
   } catch (error) {

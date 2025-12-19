@@ -14,6 +14,7 @@ type Conversation = {
   userId: string;
   projectId: string;
   startedAt: string;
+  firstMessagePreview: string | null;
 };
 
 type ConversationListSidebarProps = {
@@ -54,17 +55,17 @@ export function ConversationListSidebar({
     <SidePanel
       id="conversations"
       mobileTitle="Conversations"
-      className="![&>div]:w-[120px] !border-l-0"
+      className="!ml-4 !mt-4 !w-[220px] !border-l-0"
     >
       <div className="flex h-fit w-full flex-col gap-2 px-3 py-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-md font-semibold">Conversations</h3>
+          <h3 className="text-xl font-semibold">Conversations</h3>
         </div>
         <Button
           variant="default"
           size="sm"
           onClick={onNewConversation}
-          className="h-7 w-fit px-2 py-1.5 text-xs"
+          className="h-7 w-fit px-2 py-1.5 text-sm"
         >
           New Conversation
         </Button>
@@ -105,13 +106,21 @@ export function ConversationListSidebar({
                         : "ghost"
                     }
                     onClick={() => onSelectConversation(conversation.id)}
-                    className="w-full justify-start px-2 py-2.5 text-left"
+                    className="h-auto w-full justify-start border border-border px-2.5 py-3 text-left"
                   >
-                    <div className="flex flex-1 flex-col items-start gap-1 overflow-hidden">
-                      <span className="truncate text-sm">
-                        Conversation {conversation.id.slice(0, 8)}
+                    <div className="flex w-full flex-col items-start gap-1 overflow-hidden">
+                      <span className="w-full truncate text-sm">
+                        {conversation.firstMessagePreview
+                          ? (() => {
+                              const words = conversation.firstMessagePreview
+                                .trim()
+                                .split(/\s+/)
+                                .slice(0, 7);
+                              return words.join(" ");
+                            })()
+                          : "New conversation"}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="w-full truncate text-xs text-muted-foreground">
                         {formatDistanceToNow(new Date(conversation.startedAt), {
                           addSuffix: true,
                         })}

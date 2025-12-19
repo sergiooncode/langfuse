@@ -5,6 +5,7 @@ type Conversation = {
   userId: string;
   projectId: string;
   startedAt: string;
+  firstMessagePreview: string | null;
 };
 
 type ConversationsResponse = {

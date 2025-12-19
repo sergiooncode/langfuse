@@ -6,7 +6,6 @@ import { Textarea } from "@/src/components/ui/textarea";
 import { ScrollArea } from "@/src/components/ui/scroll-area";
 import { Loader2, Send, User, Bot } from "lucide-react";
 import { cn } from "@/src/utils/tailwind";
-import { formatDistanceToNow } from "date-fns";
 import { useConversation } from "../hooks/useConversation";
 import { useAddMessage } from "../hooks/useConversationMutations";
 
@@ -155,31 +154,38 @@ export function ChatView({ conversationId }: ChatViewProps) {
                         : "bg-muted text-foreground",
                     )}
                   >
-                    <div className="mb-1 flex items-center gap-2">
-                      <span className="text-xs font-medium opacity-70">
-                        {message.role === "user" ? "You" : "Assistant"}
-                      </span>
-                      {message.role === "user" && (
-                        <User className="h-3 w-3 opacity-70" />
-                      )}
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium opacity-70">
+                          {message.role === "user" ? "You" : "Assistant"}
+                        </span>
+                        {message.role === "user" && (
+                          <User className="h-3 w-3 opacity-70" />
+                        )}
+                      </div>
+                      <time
+                        dateTime={message.timestamp}
+                        className={cn(
+                          "text-[10px] opacity-50",
+                          message.role === "user"
+                            ? "text-primary-foreground/50"
+                            : "text-muted-foreground",
+                        )}
+                        title={new Date(message.timestamp).toLocaleString()}
+                      >
+                        {new Date(message.timestamp).toLocaleTimeString(
+                          "en-US",
+                          {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: false,
+                          },
+                        )}
+                      </time>
                     </div>
                     <p className="whitespace-pre-wrap text-sm">
                       {message.content}
                     </p>
-                    <time
-                      dateTime={message.timestamp}
-                      className={cn(
-                        "mt-1 text-xs",
-                        message.role === "user"
-                          ? "text-primary-foreground/70"
-                          : "text-muted-foreground",
-                      )}
-                      title={new Date(message.timestamp).toLocaleString()}
-                    >
-                      {formatDistanceToNow(new Date(message.timestamp), {
-                        addSuffix: true,
-                      })}
-                    </time>
                   </div>
                   {message.role === "user" && (
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary">
@@ -213,17 +219,17 @@ export function ChatView({ conversationId }: ChatViewProps) {
 
       {/* Input area */}
       <div
-        className="flex w-full shrink-0 justify-center border-t bg-background px-4 pb-4 pt-4 md:px-6 md:pb-6"
+        className="flex w-full shrink-0 justify-center bg-background px-4 pb-4 pt-4 md:px-6 md:pb-6"
         style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
       >
-        <div className="flex w-full max-w-6xl gap-2">
+        <div className="flex w-full max-w-2xl gap-2">
           <Textarea
             ref={inputRef}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
-            className="min-h-[60px] w-full resize-none"
+            placeholder="Ask, test, or explore an idea…"
+            className="min-h-[80px] w-full resize-none"
             disabled={isSending}
             aria-label="Message input"
             aria-describedby="input-help-text"
@@ -235,7 +241,7 @@ export function ChatView({ conversationId }: ChatViewProps) {
             onClick={handleSend}
             disabled={!inputValue.trim() || isSending}
             size="icon"
-            className="h-[60px] w-[60px] shrink-0"
+            className="h-[80px] w-[80px] shrink-0"
             aria-label="Send message"
           >
             {isSending ? (

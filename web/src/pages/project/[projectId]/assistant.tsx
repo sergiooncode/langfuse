@@ -26,7 +26,6 @@ export default function AssistantPage() {
     if (!projectId || !userId) return;
 
     try {
-      // Create new conversation via Next.js API route (proxies to worker)
       const response = await fetch("/api/assistant/conversations", {
         method: "POST",
         headers: {
