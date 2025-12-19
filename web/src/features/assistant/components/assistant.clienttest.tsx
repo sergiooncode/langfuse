@@ -203,12 +203,14 @@ describe("Assistant UI Tests", () => {
           userId: mockUserId,
           projectId: mockProjectId,
           startedAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+          firstMessagePreview: "conv-1 test message preview",
         },
         {
           id: "conv-2",
           userId: mockUserId,
           projectId: mockProjectId,
           startedAt: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
+          firstMessagePreview: "conv-2 test message preview",
         },
       ];
 
@@ -231,7 +233,7 @@ describe("Assistant UI Tests", () => {
         </TestWrapper>,
       );
 
-      // Check that conversations are displayed
+      // Check that conversations are displayed with their preview text
       expect(screen.getByText(/conv-1/i)).toBeInTheDocument();
       expect(screen.getByText(/conv-2/i)).toBeInTheDocument();
     });
