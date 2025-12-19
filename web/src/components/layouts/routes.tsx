@@ -18,6 +18,7 @@ import {
   SquarePercent,
   ClipboardPen,
   Clock,
+  Bot,
 } from "lucide-react";
 import { type ReactNode } from "react";
 import { type Entitlement } from "@/src/features/entitlements/constants/entitlements";
@@ -134,6 +135,12 @@ export const ROUTES: Route[] = [
     icon: TerminalIcon,
     productModule: "playground",
     group: RouteGroup.PromptManagement,
+    section: RouteSection.Main,
+  },
+  {
+    title: "Assistant",
+    pathname: "/project/[projectId]/assistant",
+    icon: Bot,
     section: RouteSection.Main,
   },
   {

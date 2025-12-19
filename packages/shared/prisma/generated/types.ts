@@ -174,6 +174,11 @@ export const SurveyName = {
   USER_ONBOARDING: "user_onboarding",
 } as const;
 export type SurveyName = (typeof SurveyName)[keyof typeof SurveyName];
+export const MessageSender = {
+  USER: "user",
+  ASSISTANT: "assistant",
+} as const;
+export type MessageSender = (typeof MessageSender)[keyof typeof MessageSender];
 export type Account = {
   id: string;
   user_id: string;
@@ -387,6 +392,12 @@ export type CommentReaction = {
   user_id: string;
   emoji: string;
   created_at: Generated<Timestamp>;
+};
+export type Conversation = {
+  id: string;
+  user_id: string;
+  started_at: Generated<Timestamp>;
+  project_id: string;
 };
 export type CronJobs = {
   name: string;
@@ -676,6 +687,13 @@ export type MembershipInvitation = {
   created_at: Generated<Timestamp>;
   updated_at: Generated<Timestamp>;
 };
+export type Message = {
+  id: string;
+  conversation_id: string;
+  sender: MessageSender;
+  content: string;
+  timestamp: Generated<Timestamp>;
+};
 export type MixpanelIntegration = {
   project_id: string;
   encrypted_mixpanel_project_token: string;
@@ -951,6 +969,7 @@ export type DB = {
   cloud_spend_alerts: CloudSpendAlert;
   comment_reactions: CommentReaction;
   comments: Comment;
+  conversations: Conversation;
   cron_jobs: CronJobs;
   dashboard_widgets: DashboardWidget;
   dashboards: Dashboard;
@@ -968,6 +987,7 @@ export type DB = {
   llm_tools: LlmTool;
   media: Media;
   membership_invitations: MembershipInvitation;
+  messages: Message;
   mixpanel_integrations: MixpanelIntegration;
   models: Model;
   notification_preferences: NotificationPreference;
