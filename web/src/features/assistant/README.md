@@ -83,10 +83,85 @@ Browser → Next.js API Route → Worker Express API → OpenAI
 ## Testing
 
 - Backend tests: `worker/src/features/assistant/__tests__/assistant.test.ts`
+  - Run command: `pnpm --filter=web test assistant.clienttest`
 - Frontend tests: `web/src/features/assistant/components/assistant.clienttest.tsx`
+  - Run command: `pnpm --filter=web test-client --testPathPattern=assistant.clienttest`
 
 ## API Specification
 
 Fern API definition: `fern/apis/server/definition/assistant.yml`
 - OpenAPI spec generated automatically in CI
 - All endpoints documented with request/response types
+
+## Running Locally
+
+1. **Environment variables** (`.env` file):
+   ```env
+   CLICKHOUSE_CLUSTER_ENABLED=false
+   LANGFUSE_SECRET_KEY=sk-lf-...
+   LANGFUSE_PUBLIC_KEY=pk-lf-...
+   LANGFUSE_BASE_URL=http://localhost:3000
+   WORKER_API_URL=http://localhost:3030
+   NEXT_PUBLIC_WORKER_API_URL=http://localhost:3030
+   ```
+
+2. **Start infrastructure**: `pnpm run infra:dev:up` (PostgreSQL, ClickHouse, Redis, MinIO)
+
+3. **Run database migrations**:
+   ```bash
+   pnpm --filter=shared run db:migrate  # PostgreSQL migrations
+   pnpm --filter=shared run ch:reset   # ClickHouse migrations (required to see traces)
+   ```
+
+4. **Start worker server**: `pnpm run dev:worker` (runs on `http://localhost:3030`)
+
+5. **Start web server**: `pnpm run dev` or `pnpm run dev:web` (runs on `http://localhost:3000`)
+
+6. **Configure OpenAI API key**:
+   - Navigate to project settings → LLM API Keys
+   - Add OpenAI API key (required for assistant to generate responses)
+
+7. **Access assistant**: Navigate to `/project/[projectId]/assistant`
+
+**Note**: Both worker and web servers must be running. The web server proxies requests to the worker API. If the worker is not running, you'll see a helpful error message. ClickHouse migrations are required to view traces in the Langfuse UI.
+
+## Decisions & Trade-offs
+
+### Architecture Decisions
+
+- **Custom React Query hooks vs tRPC**: Used custom hooks because endpoints are in the worker (Express), not Next.js tRPC layer. This keeps the architecture simple while still providing React Query benefits (caching, refetching).
+
+- **Next.js API proxy**: Proxies requests from browser to worker to handle CORS and provide unified authentication. Adds one network hop but simplifies frontend code.
+
+- **Blocking LLM calls**: Current implementation waits for full LLM response before returning. Trade-off: simpler implementation vs. better UX with streaming.
+
+### Current Limitations
+
+- **No pagination**: Conversations and messages load entirely. Fine for small datasets, but will need pagination at scale.
+
+- **No message history limit**: Sends entire conversation history to LLM. Can cause high token costs for long conversations.
+
+- **No rate limiting**: No protection against API abuse or cost explosion.
+
+- **No streaming**: Users wait for complete LLM response instead of seeing tokens stream in.
+
+### Future Improvements
+
+- **High Priority**:
+  - Add pagination to conversations list and messages
+  - Limit message history sent to LLM (sliding window, token budget)
+  - Implement optimistic updates in frontend
+  - Add rate limiting middleware
+
+- **Medium Priority**:
+  - Streaming LLM responses (Server-Sent Events)
+  - Virtual scrolling for long message lists
+  - Cache decrypted API keys
+  - Message pagination/lazy loading
+
+- **Nice to Have**:
+  - Memoize timestamp formatting
+  - Smart auto-scroll (only when user is at bottom)
+  - Connection pooling configuration
+
+See `PERFORMANCE_ANALYSIS.md` for detailed performance analysis and optimization recommendations.
