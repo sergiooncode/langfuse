@@ -56,7 +56,7 @@ export function ConversationListSidebar({
       mobileTitle="Conversations"
       className="![&>div]:w-[120px] !border-l-0"
     >
-      <div className="flex h-fit w-full flex-col gap-2 p-3 pb-3">
+      <div className="flex h-fit w-full flex-col gap-2 px-3 py-3">
         <div className="flex items-center justify-between">
           <h3 className="text-md font-semibold">Conversations</h3>
         </div>
@@ -64,14 +64,14 @@ export function ConversationListSidebar({
           variant="default"
           size="sm"
           onClick={onNewConversation}
-          className="h-7 w-full px-2 py-1.5 text-sm"
+          className="h-7 w-fit px-2 py-1.5 text-xs"
         >
           New Conversation
         </Button>
       </div>
       <SidePanelContent className="border-t-0">
         <ScrollArea className="h-full">
-          <div className="p-2">
+          <div className="px-3 py-1">
             {isLoading ? (
               <div className="space-y-2">
                 {[1, 2, 3, 4].map((i) => (
@@ -105,7 +105,7 @@ export function ConversationListSidebar({
                         : "ghost"
                     }
                     onClick={() => onSelectConversation(conversation.id)}
-                    className="w-full justify-start text-left"
+                    className="w-full justify-start px-2 py-2.5 text-left"
                   >
                     <div className="flex flex-1 flex-col items-start gap-1 overflow-hidden">
                       <span className="truncate text-sm">

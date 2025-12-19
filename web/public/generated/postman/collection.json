@@ -445,6 +445,151 @@
     {
       "_type": "container",
       "description": null,
+      "name": "Assistant",
+      "item": [
+        {
+          "_type": "endpoint",
+          "name": "Get Conversations",
+          "request": {
+            "description": "Get a list of conversations for a project. Optionally filter by userId.\nReturns conversations ordered by most recent first.",
+            "url": {
+              "raw": "{{baseUrl}}/api/conversations?projectId=&userId=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "conversations"
+              ],
+              "query": [
+                {
+                  "key": "projectId",
+                  "value": "",
+                  "description": "The id of the project to fetch conversations for."
+                },
+                {
+                  "key": "userId",
+                  "value": "",
+                  "description": "Optional user id to filter conversations by a specific user."
+                }
+              ],
+              "variable": []
+            },
+            "header": [],
+            "method": "GET",
+            "auth": null,
+            "body": null
+          },
+          "response": []
+        },
+        {
+          "_type": "endpoint",
+          "name": "Get Conversation",
+          "request": {
+            "description": "Get a conversation by id, including all messages in chronological order.",
+            "url": {
+              "raw": "{{baseUrl}}/api/conversations/:conversationId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "conversations",
+                ":conversationId"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "conversationId",
+                  "value": "",
+                  "description": "The unique identifier of the conversation"
+                }
+              ]
+            },
+            "header": [],
+            "method": "GET",
+            "auth": null,
+            "body": null
+          },
+          "response": []
+        },
+        {
+          "_type": "endpoint",
+          "name": "Create Conversation",
+          "request": {
+            "description": "Create a new conversation. Returns the created conversation with its id and start timestamp.",
+            "url": {
+              "raw": "{{baseUrl}}/api/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "conversations"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [],
+            "method": "POST",
+            "auth": null,
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"projectId\": \"example\",\n    \"userId\": \"example\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "_type": "endpoint",
+          "name": "Add Message",
+          "request": {
+            "description": "Add a message to a conversation. This will:\n1. Save the user message\n2. Call the LLM (OpenAI) to generate an assistant response\n3. Save the assistant response\n4. Create Langfuse traces for observability\n\nReturns both the user message and assistant response.\n\n**Note:** This endpoint requires an OpenAI API key to be configured for the project.",
+            "url": {
+              "raw": "{{baseUrl}}/api/conversations/:conversationId/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "conversations",
+                ":conversationId",
+                "messages"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "conversationId",
+                  "value": "",
+                  "description": "The unique identifier of the conversation"
+                }
+              ]
+            },
+            "header": [],
+            "method": "POST",
+            "auth": null,
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"content\": \"example\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "_type": "container",
+      "description": null,
       "name": "Blob Storage Integrations",
       "item": [
         {

@@ -560,6 +560,226 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/AnnotationQueueAssignmentRequest'
+  /api/conversations:
+    get:
+      description: |-
+        Get a list of conversations for a project. Optionally filter by userId.
+        Returns conversations ordered by most recent first.
+      operationId: assistant_get-conversations
+      tags:
+        - Assistant
+      parameters:
+        - name: projectId
+          in: query
+          description: The id of the project to fetch conversations for.
+          required: true
+          schema:
+            type: string
+        - name: userId
+          in: query
+          description: Optional user id to filter conversations by a specific user.
+          required: false
+          schema:
+            type: string
+            nullable: true
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetConversationsResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '405':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+      security:
+        - BasicAuth: []
+    post:
+      description: >-
+        Create a new conversation. Returns the created conversation with its id
+        and start timestamp.
+      operationId: assistant_create-conversation
+      tags:
+        - Assistant
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateConversationResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '405':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+      security:
+        - BasicAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateConversationRequest'
+  /api/conversations/{conversationId}:
+    get:
+      description: Get a conversation by id, including all messages in chronological order.
+      operationId: assistant_get-conversation
+      tags:
+        - Assistant
+      parameters:
+        - name: conversationId
+          in: path
+          description: The unique identifier of the conversation
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetConversationResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '405':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+      security:
+        - BasicAuth: []
+  /api/conversations/{conversationId}/messages:
+    post:
+      description: >-
+        Add a message to a conversation. This will:
+
+        1. Save the user message
+
+        2. Call the LLM (OpenAI) to generate an assistant response
+
+        3. Save the assistant response
+
+        4. Create Langfuse traces for observability
+
+
+        Returns both the user message and assistant response.
+
+
+        **Note:** This endpoint requires an OpenAI API key to be configured for
+        the project.
+      operationId: assistant_add-message
+      tags:
+        - Assistant
+      parameters:
+        - name: conversationId
+          in: path
+          description: The unique identifier of the conversation
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddMessageResponse'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '405':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+      security:
+        - BasicAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddMessageRequest'
   /api/public/integrations/blob-storage:
     get:
       description: >-
@@ -6138,6 +6358,137 @@ components:
         - userId
         - queueId
         - projectId
+    GetConversationsResponse:
+      title: GetConversationsResponse
+      type: object
+      properties:
+        conversations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversationSummary'
+          description: List of conversations ordered by most recent first
+      required:
+        - conversations
+    ConversationSummary:
+      title: ConversationSummary
+      type: object
+      properties:
+        id:
+          type: string
+          description: The unique identifier of the conversation
+        userId:
+          type: string
+          description: The user id associated with the conversation
+        projectId:
+          type: string
+          description: The project id the conversation belongs to
+        startedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the conversation was created
+      required:
+        - id
+        - userId
+        - projectId
+        - startedAt
+    GetConversationResponse:
+      title: GetConversationResponse
+      type: object
+      properties:
+        id:
+          type: string
+          description: The unique identifier of the conversation
+        startedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the conversation was created
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+          description: List of messages in chronological order (oldest first)
+      required:
+        - id
+        - startedAt
+        - messages
+    MessageRole:
+      title: MessageRole
+      type: string
+      enum:
+        - user
+        - assistant
+      description: The role of the message sender
+    Message:
+      title: Message
+      type: object
+      properties:
+        id:
+          type: string
+          description: The unique identifier of the message
+        role:
+          $ref: '#/components/schemas/MessageRole'
+          description: The role of the message sender
+        content:
+          type: string
+          description: The content of the message
+        timestamp:
+          type: string
+          format: date-time
+          description: The timestamp when the message was created
+      required:
+        - id
+        - role
+        - content
+        - timestamp
+    CreateConversationRequest:
+      title: CreateConversationRequest
+      type: object
+      properties:
+        projectId:
+          type: string
+          description: The id of the project to create the conversation in
+        userId:
+          type: string
+          description: The id of the user creating the conversation
+      required:
+        - projectId
+        - userId
+    CreateConversationResponse:
+      title: CreateConversationResponse
+      type: object
+      properties:
+        id:
+          type: string
+          description: The unique identifier of the created conversation
+        startedAt:
+          type: string
+          format: date-time
+          description: The timestamp when the conversation was created
+      required:
+        - id
+        - startedAt
+    AddMessageRequest:
+      title: AddMessageRequest
+      type: object
+      properties:
+        content:
+          type: string
+          description: The content of the user message to send
+      required:
+        - content
+    AddMessageResponse:
+      title: AddMessageResponse
+      type: object
+      properties:
+        userMessage:
+          $ref: '#/components/schemas/Message'
+          description: The user message that was saved
+        assistantMessage:
+          $ref: '#/components/schemas/Message'
+          description: The assistant's response that was generated and saved
+      required:
+        - userMessage
+        - assistantMessage
     BlobStorageIntegrationType:
       title: BlobStorageIntegrationType
       type: string
