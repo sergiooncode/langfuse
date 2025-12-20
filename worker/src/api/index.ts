@@ -3,6 +3,7 @@ import { traceException } from "@langfuse/shared/src/server";
 
 import { checkContainerHealth } from "../features/health";
 import { logger } from "@langfuse/shared/src/server";
+import { assistantRoutes } from "../features/assistant/routes";
 const router = express.Router();
 
 router.get<{}, { status: string }>("/health", async (_req, res) => {
@@ -28,5 +29,7 @@ router.get<{}, { status: string }>("/ready", async (_req, res) => {
     });
   }
 });
+
+router.use("/conversations", assistantRoutes);
 
 export default router;

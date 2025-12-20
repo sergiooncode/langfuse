@@ -92,6 +92,7 @@ model User {
   surveys                   Survey[]
   commentReactions          CommentReaction[]
   notificationPreferences   NotificationPreference[]
+  conversations              Conversation[]
 
   @@map("users")
 }
@@ -142,6 +143,7 @@ model Project {
   dataset                   Dataset[]
   invitations               MembershipInvitation[]
   sessions                  TraceSession[]
+  conversations             Conversation[]
   Prompt                    Prompt[]
   Model                     Model[]
   EvalTemplate              EvalTemplate[]
@@ -1596,4 +1598,39 @@ model CloudSpendAlert {
 
   @@index([orgId])
   @@map("cloud_spend_alerts")
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startedAt DateTime @default(now()) @map("started_at")
+
+  projectId String   @map("project_id")
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  messages  Message[]
+
+  @@index([projectId, startedAt(sort: Desc)])
+  @@index([userId, startedAt(sort: Desc)])
+  @@map("conversations")
+}
+
+enum MessageSender {
+  USER      @map("user")
+  ASSISTANT @map("assistant")
+
+  @@map("MessageSender")
+}
+
+model Message {
+  id             String          @id @default(cuid())
+  conversationId String          @map("conversation_id")
+  conversation   Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         MessageSender
+  content        String
+  timestamp      DateTime        @default(now())
+
+  @@index([conversationId, timestamp(sort: Asc)])
+  @@map("messages")
 }

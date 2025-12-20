@@ -1,0 +1,156 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/fern-api/fern/main/fern.schema.json
+imports:
+  commons: ./commons.yml
+service:
+  auth: true
+  base-path: /api
+  endpoints:
+    get-conversations:
+      docs: |
+        Get a list of conversations for a project. Optionally filter by userId.
+        Returns conversations ordered by most recent first.
+      method: GET
+      path: /conversations
+      request:
+        name: GetConversationsRequest
+        query-parameters:
+          projectId:
+            type: string
+            docs: The id of the project to fetch conversations for.
+          userId:
+            type: optional<string>
+            docs: Optional user id to filter conversations by a specific user.
+      response: GetConversationsResponse
+      errors:
+        - commons.Error
+        - commons.UnauthorizedError
+        - commons.MethodNotAllowedError
+    get-conversation:
+      docs: |
+        Get a conversation by id, including all messages in chronological order.
+      method: GET
+      path: /conversations/{conversationId}
+      path-parameters:
+        conversationId:
+          type: string
+          docs: The unique identifier of the conversation
+      response: GetConversationResponse
+      errors:
+        - commons.Error
+        - commons.UnauthorizedError
+        - commons.NotFoundError
+        - commons.MethodNotAllowedError
+    create-conversation:
+      docs: |
+        Create a new conversation. Returns the created conversation with its id and start timestamp.
+      method: POST
+      path: /conversations
+      request: CreateConversationRequest
+      response: CreateConversationResponse
+      errors:
+        - commons.Error
+        - commons.UnauthorizedError
+        - commons.MethodNotAllowedError
+    add-message:
+      docs: |
+        Add a message to a conversation. This will:
+        1. Save the user message
+        2. Call the LLM (OpenAI) to generate an assistant response
+        3. Save the assistant response
+        4. Create Langfuse traces for observability
+        
+        Returns both the user message and assistant response.
+        
+        **Note:** This endpoint requires an OpenAI API key to be configured for the project.
+      method: POST
+      path: /conversations/{conversationId}/messages
+      path-parameters:
+        conversationId:
+          type: string
+          docs: The unique identifier of the conversation
+      request: AddMessageRequest
+      response: AddMessageResponse
+      errors:
+        - commons.Error
+        - commons.UnauthorizedError
+        - commons.NotFoundError
+        - commons.MethodNotAllowedError
+types:
+  GetConversationsResponse:
+    properties:
+      conversations:
+        type: list<ConversationSummary>
+        docs: List of conversations ordered by most recent first
+  ConversationSummary:
+    properties:
+      id:
+        type: string
+        docs: The unique identifier of the conversation
+      userId:
+        type: string
+        docs: The user id associated with the conversation
+      projectId:
+        type: string
+        docs: The project id the conversation belongs to
+      startedAt:
+        type: datetime
+        docs: The timestamp when the conversation was created
+  GetConversationResponse:
+    properties:
+      id:
+        type: string
+        docs: The unique identifier of the conversation
+      startedAt:
+        type: datetime
+        docs: The timestamp when the conversation was created
+      messages:
+        type: list<Message>
+        docs: List of messages in chronological order (oldest first)
+  MessageRole:
+    enum:
+      - user
+      - assistant
+    docs: The role of the message sender
+  Message:
+    properties:
+      id:
+        type: string
+        docs: The unique identifier of the message
+      role:
+        type: MessageRole
+        docs: The role of the message sender
+      content:
+        type: string
+        docs: The content of the message
+      timestamp:
+        type: datetime
+        docs: The timestamp when the message was created
+  CreateConversationRequest:
+    properties:
+      projectId:
+        type: string
+        docs: The id of the project to create the conversation in
+      userId:
+        type: string
+        docs: The id of the user creating the conversation
+  CreateConversationResponse:
+    properties:
+      id:
+        type: string
+        docs: The unique identifier of the created conversation
+      startedAt:
+        type: datetime
+        docs: The timestamp when the conversation was created
+  AddMessageRequest:
+    properties:
+      content:
+        type: string
+        docs: The content of the user message to send
+  AddMessageResponse:
+    properties:
+      userMessage:
+        type: Message
+        docs: The user message that was saved
+      assistantMessage:
+        type: Message
+        docs: The assistant's response that was generated and saved
