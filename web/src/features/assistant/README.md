@@ -19,6 +19,12 @@ Interactive chat assistant feature that allows users to have conversations with 
   - [React Query Hooks](#react-query-hooks)
   - [API Proxy Routes](#api-proxy-routes)
 - [Architecture](#architecture)
+- [Tracing & Observability](#tracing--observability)
+  - [Trace Structure](#trace-structure)
+  - [Viewing Traces](#viewing-traces)
+  - [Trace Implementation](#trace-implementation)
+  - [Non-Blocking Tracing](#non-blocking-tracing)
+  - [Benefits](#benefits)
 - [Testing](#testing)
   - [Test Structure](#test-structure)
   - [Testing Strategy](#testing-strategy)
@@ -113,6 +119,102 @@ Browser → Next.js API Route → Worker Express API → OpenAI
 - Next.js routes handle authentication and proxy to worker
 - Worker handles business logic, database, and LLM calls
 - React Query provides caching and optimistic updates
+
+## Tracing & Observability
+
+Every assistant conversation interaction is automatically traced in Langfuse, providing full observability into LLM calls, costs, and performance.
+
+### Trace Structure
+
+Each message sent to the assistant creates:
+
+1. **TRACE_CREATE Event** - Top-level trace representing the conversation interaction
+   - **Name**: `Assistant Conversation: {conversationId}`
+   - **Input**: Full conversation history and new user message
+   - **Output**: Assistant's response
+   - **Metadata**: `conversationId`, `model` (gpt-4o-mini)
+   - **User ID**: Links trace to the user who initiated the conversation
+
+2. **GENERATION_CREATE Event** - Detailed LLM generation information
+   - **Name**: "OpenAI Chat Completion"
+   - **Model**: `gpt-4o-mini`
+   - **Input**: Full message history in OpenAI format
+   - **Output**: Assistant's response content
+   - **Usage**: Token counts (input, output, total)
+   - **Timing**: `startTime`, `endTime`, `completionStartTime`
+   - **Model Parameters**: `temperature: 0.7`, `max_tokens: 1000`
+   - **Metadata**: `conversationId`, `messageId`
+
+### Viewing Traces
+
+After sending a message in the assistant:
+
+1. Navigate to the **Traces** page in Langfuse
+2. Search for traces with name pattern: `Assistant Conversation: *`
+3. Click on a trace to view:
+   - Full conversation context
+   - LLM input/output
+   - Token usage and costs
+   - Model parameters
+   - Timing information
+   - Metadata linking back to conversation and message IDs
+
+![Assistant conversation trace in Langfuse UI](./images/tracing-screenshot.png)
+
+### Trace Implementation
+
+Traces are created using `processEventBatch` from `@langfuse/shared/src/server`:
+
+```typescript
+// In addMessageToConversation controller
+const traceEvent: IngestionEventType = {
+  type: eventTypes.TRACE_CREATE,
+  body: {
+    id: traceId,
+    name: `Assistant Conversation: ${id}`,
+    userId: conversation.userId,
+    input: { conversationId: id, messages: openaiMessages },
+    output: { assistantMessage: assistantContent },
+    metadata: { conversationId: id, model: "gpt-4o-mini" },
+  },
+};
+
+const generationEvent: IngestionEventType = {
+  type: eventTypes.GENERATION_CREATE,
+  body: {
+    id: generationId,
+    traceId: traceId,
+    name: "OpenAI Chat Completion",
+    model: "gpt-4o-mini",
+    input: openaiMessages,
+    output: assistantContent,
+    usage: { input, output, total, unit: "TOKENS" },
+    metadata: { conversationId: id, messageId: assistantMessage.id },
+  },
+};
+
+await processEventBatch([traceEvent, generationEvent], {...});
+```
+
+### Non-Blocking Tracing
+
+Tracing is **non-blocking** - if tracing fails, the conversation still succeeds:
+
+- Errors are caught and logged
+- User experience is not impacted
+- Traces are created asynchronously
+- Failures are monitored via logs
+
+This ensures observability doesn't impact the critical path of user interactions.
+
+### Benefits
+
+- **Cost Monitoring**: Track token usage and costs per conversation
+- **Performance Analysis**: Monitor LLM response times
+- **Debugging**: Inspect full conversation context when issues occur
+- **User Attribution**: Link traces to specific users via `userId`
+- **Model Tracking**: See which model was used for each response
+- **Full Context**: View complete conversation history in trace input
 
 ## Testing
 
